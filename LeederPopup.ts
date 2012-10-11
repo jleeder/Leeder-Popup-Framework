@@ -26,6 +26,12 @@ module LeederPopup {
         url?: string;
     }
     
+    interface WindowDimensions 
+    {
+        width: number;
+        height: number;
+    }
+
     export class Controller {
         options: ControllerConfiguration =
         {
@@ -56,7 +62,8 @@ module LeederPopup {
         stack: Popup[];
         popupNumber: number;
         overlay: JQuery;
-
+        windowDimensions: WindowDimensions;
+        $window: JQuery;
         constructor (config: ControllerConfiguration) {
             $.extend(this.options, config);
             this.popupNumber = 0;
@@ -73,14 +80,31 @@ module LeederPopup {
                 "backgroundColor": this.options.overlayColor
             });
 
+            this.$window = $(window);
+            this.windowDimensions = 
+            {
+                width: this.$window.width(),
+                height: this.$window.height()
+            };
             if (this.options.overlayClickClose) {
                 this.overlay.click(function () {
                     //TODO - close the top popup if overlay click to close is active
                 });
             }
+           
+            this.$window.resize(this.resize);
         }
 
-        open(popup: Popup) 
+        private resize(event: JQueryEventObject) : any 
+        {
+           this.windowDimensions = 
+            {
+                width: this.$window.width(),
+                height: this.$window.height()
+            };
+        }
+
+        open(popup: Popup): Popup 
         {
             popup = $.extend(this.defaultPopup, popup);
             popup.id = this.options.contentIdPrefix + "_" + this.popupNumber++;
@@ -90,14 +114,35 @@ module LeederPopup {
                 // TODO - think about moving all popups in front of the threshold instead of just doing the last
                 $('#' + this.stack[this.stack.length - 1].id).css('zIndex', this.options.threshold - 10);
             }
-
+            
             switch (popup.loadMethod.toLowerCase()) 
             {
                 case 'html':
+                    this.openHtml(popup);
                     break;
                 case 'ajax':
                     break;
+                case 'iframe':
+                    break;
             }
+            this.stack.push(popup);
+            return popup;
+        }
+
+        
+        private openHtml(popup) 
+        {
+            
+        }
+
+        private openAjax(popup) 
+        {
+            
+        }
+
+        private openIframe(popup) 
+        {
+            
         }
     }
 }
