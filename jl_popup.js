@@ -39,24 +39,38 @@ var PopupController = function (config) {
         "top": 0, "left": 0,
         "backgroundColor": this.options.overlayColor
     });
+
+    this.defaultPopup = {
+        "className": "default",
+        "closeClass": "close",
+        "width": 500,
+        "height": 500,
+        "loadMethod": "ajax", //ajax, iframe, jsonp, html
+        "callback": "callback",
+        "iframeAnchorHtml": 'X',
+        "loadingClass": "popupLoading",
+        "beforeOpen": function () { },
+        "beforeClose": function () { },
+        "html": null, //for popups with loadMethod html
+        "url" : null, //for popups with loadMethod ajax, iframe or jsonp 
+    };
 }
 
-PopupController.prototype.open = function (popupOptions, url) {
-    var p = new Popup(popupOptions);
+PopupController.prototype.open = function (popupOptions) {
+    var p = $.extend(this.defaultPopup, popupOptions);
     var scope = this;
-    p.options.id = this.options.contentPrefix + "_" + this.popupNumber;
-    this.popupNumber++;
-    this.stack.push(p);
+    p.id = this.options.contentPrefix + "_" + this.popupNumber++;
     if (this.stack.length > 0) {
         $('#' + this.getActivePopup().options.id).css({ "zIndex": scope.options.threshold - 10 });
     }
-    p.open(this, url);
+    p.open(this, url); //TODO : change open method to live on this object
+    this.stack.push(p);
     return p;
 }
 
 PopupController.prototype.close = function (popup) {
     this.removePopupFromStack(popup);
-    popup.close();
+    popup.close(); //TODO : change clsoe method to live on this object
     var scope = this;
     if (this.stack.length > 0) {
         $('#' + this.getActivePopup().options.id).css({ "zIndex": scope.options.threshold + 10 });
@@ -90,7 +104,7 @@ PopupController.prototype.removePopupFromStack = function (popup) {
 
 PopupController.prototype.findIndexOfPopup = function (popup) {
     for (var i = 0; i < this.stack.length; i++) {
-        if (this.stack[i].options.id == popup.options.id) {
+        if (this.stack[i].id == popup.id) {
             return i;
         }
     }
