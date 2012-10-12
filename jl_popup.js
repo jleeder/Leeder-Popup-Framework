@@ -39,38 +39,24 @@ var PopupController = function (config) {
         "top": 0, "left": 0,
         "backgroundColor": this.options.overlayColor
     });
-
-    this.defaultPopup = {
-        "className": "default",
-        "closeClass": "close",
-        "width": 500,
-        "height": 500,
-        "loadMethod": "ajax", //ajax, iframe, jsonp, html
-        "callback": "callback",
-        "iframeAnchorHtml": 'X',
-        "loadingClass": "popupLoading",
-        "beforeOpen": function () { },
-        "beforeClose": function () { },
-        "html": null, //for popups with loadMethod html
-        "url" : null, //for popups with loadMethod ajax, iframe or jsonp 
-    };
 }
 
-PopupController.prototype.open = function (popupOptions) {
-    var p = $.extend(this.defaultPopup, popupOptions);
+PopupController.prototype.open = function (popupOptions, url) {
+    var p = new Popup(popupOptions);
     var scope = this;
-    p.id = this.options.contentPrefix + "_" + this.popupNumber++;
+    p.options.id = this.options.contentPrefix + "_" + this.popupNumber;
+    this.popupNumber++;
     if (this.stack.length > 0) {
         $('#' + this.getActivePopup().options.id).css({ "zIndex": scope.options.threshold - 10 });
     }
-    p.open(this, url); //TODO : change open method to live on this object
     this.stack.push(p);
+    p.open(this, url);
     return p;
 }
 
 PopupController.prototype.close = function (popup) {
     this.removePopupFromStack(popup);
-    popup.close(); //TODO : change clsoe method to live on this object
+    popup.close();
     var scope = this;
     if (this.stack.length > 0) {
         $('#' + this.getActivePopup().options.id).css({ "zIndex": scope.options.threshold + 10 });
@@ -104,7 +90,7 @@ PopupController.prototype.removePopupFromStack = function (popup) {
 
 PopupController.prototype.findIndexOfPopup = function (popup) {
     for (var i = 0; i < this.stack.length; i++) {
-        if (this.stack[i].id == popup.id) {
+        if (this.stack[i].options.id == popup.options.id) {
             return i;
         }
     }
@@ -122,6 +108,8 @@ var Popup = function (config) {
 	    "callback": "callback",
 	    "iframeAnchorHtml": 'X',
 	    "loadingClass": "popupLoading",
+	    "positionType": "centered", //offset
+        "topOffset" : "0",
 	    "beforeOpen": function () { },
 	    "beforeClose": function () { }
 	}
@@ -141,11 +129,26 @@ Popup.prototype.open = function (controller, url) {
 	    "height": windowDimensions.height
 	};
 
+    var left, top = 0;
+    //console.log(scope.options.positionType);
+    switch (scope.options.positionType)
+    {
+        case "centered":
+            left = position.x < 0 ? $(document).scrollLeft() : position.x + $(document).scrollLeft();
+            top = position.y < 0 ? $(document).scrollTop() : position.y + $(document).scrollTop();
+            break;
+        case "offset":
+            left = position.x < 0 ? $(document).scrollLeft() : position.x + $(document).scrollLeft();
+            top = $(document).scrollTop() + scope.options.topOffset;
+            break;
+    }
+
+    //console.log(left, top);
     var css =
 	{
 	    'position': 'absolute',
-	    'left': position.x < 0 ? $(document).scrollLeft() : position.x + $(document).scrollLeft(),
-	    'top': position.y < 0 ? $(document).scrollTop() : position.y + $(document).scrollTop(),
+	    'left': left,
+	    'top': top,
 	    'display': 'none',
 	    'width': scope.options.width,
 	    'height': scope.options.height,
@@ -197,8 +200,8 @@ Popup.prototype.open = function (controller, url) {
                 });
                 break;
             case "iframe":
-                var iframe = '<iframe style="visibility:hidden;" onload="this.style.visibility = \'visible\'; $(\'#' + scope.options.id + '\').removeClass(\'' + scope.options.loadingClass + '\');" src="' + url + '" frameborder="0" allowTransparency="true" scrolling="no" width="' + scope.options.width + '" height="' + scope.options.height + '"/>';
-                var closeButton = '<a href="#" class="close roundedCorners bold" style="position: absolute">' + scope.options.iframeAnchorHtml + '</a>';
+                var iframe = '<iframe style="visibility:hidden;" onload="this.style.visibility = \'visible\'; $(\'#' + scope.options.id + ' .' + scope.options.closeClass +'\').show(); $(\'#' + scope.options.id + '\').removeClass(\'' + scope.options.loadingClass + '\');" src="' + url + '" frameborder="0" allowTransparency="true" scrolling="no" width="' + scope.options.width + '" height="' + scope.options.height + '"/>';
+                var closeButton = '<a href="#" class="' + scope.options.closeClass + '" style="display: none; position: absolute">' + scope.options.iframeAnchorHtml + '</a>';
                 $container.html(closeButton + iframe);
                 if (typeof (scope.options.beforeOpen) == "function") {
                     scope.options.beforeOpen(scope);
@@ -217,7 +220,9 @@ Popup.prototype.open = function (controller, url) {
                 if (scope.options.height == null) {
                     css.height = $container.height();
                     var y = (windowDimensions.height - css.height) / 2;
-                    css.top = y < 0 ? $(document).scrollTop() : y + $(document).scrollTop();
+                    if (scope.options.positionType == 'centered') {
+                        css.top = y < 0 ? $(document).scrollTop() : y + $(document).scrollTop();
+                    }
                 }
                 if (typeof (scope.options.beforeOpen) == "function") {
                     scope.options.beforeOpen(scope);

@@ -18,16 +18,17 @@ module LeederPopup {
         width?: number;
         height?: number;
         loadMethod?: string;
+        positionType?: string;
         iframeCloseHtml?: string;
         loadingClass?: string;
         beforeOpen?: (Popup) => any;
         beforeClose?: (Popup) => any;
         html?: string;
         url?: string;
+        offset?: number;
     }
-    
-    interface WindowDimensions 
-    {
+
+    interface WindowDimensions {
         width: number;
         height: number;
     }
@@ -43,7 +44,7 @@ module LeederPopup {
             overlayClickClose: true
         }
 
-        defaultPopup: Popup = 
+        defaultPopup: Popup =
         {
             className: "default",
             closeClass: "close",
@@ -52,18 +53,21 @@ module LeederPopup {
             loadMethod: "ajax", //ajax, iframe, jsonp, html
             callback: "callback",
             iframeAnchorHtml: 'X',
+            positionType: 'centered',
             loadingClass: "popupLoading",
             beforeOpen: function () { },
             beforeClose: function () { },
             html: null, //for popups with loadMethod html
-            url : null, //for popups with loadMethod ajax, iframe or jsonp
+            url: null, //for popups with loadMethod ajax, iframe or jsonp
+            offset: 0
         }
-        
+
         stack: Popup[];
         popupNumber: number;
         overlay: JQuery;
         windowDimensions: WindowDimensions;
         $window: JQuery;
+
         constructor (config: ControllerConfiguration) {
             $.extend(this.options, config);
             this.popupNumber = 0;
@@ -81,7 +85,7 @@ module LeederPopup {
             });
 
             this.$window = $(window);
-            this.windowDimensions = 
+            this.windowDimensions =
             {
                 width: this.$window.width(),
                 height: this.$window.height()
@@ -91,58 +95,97 @@ module LeederPopup {
                     //TODO - close the top popup if overlay click to close is active
                 });
             }
-           
+
             this.$window.resize(this.resize);
         }
 
-        private resize(event: JQueryEventObject) : any 
-        {
-           this.windowDimensions = 
-            {
-                width: this.$window.width(),
-                height: this.$window.height()
-            };
+        private resize(event: JQueryEventObject): any {
+            this.windowDimensions =
+             {
+                 width: this.$window.width(),
+                 height: this.$window.height()
+             };
         }
 
-        open(popup: Popup): Popup 
-        {
+        open(popup: Popup): Popup {
             popup = $.extend(this.defaultPopup, popup);
             popup.id = this.options.contentIdPrefix + "_" + this.popupNumber++;
-            if (this.stack.length > 0) { //something is already opened
-                //move the last popup behind the threshold
-                //don't worry about the rest they should have been moved when the last opened
-                // TODO - think about moving all popups in front of the threshold instead of just doing the last
-                $('#' + this.stack[this.stack.length - 1].id).css('zIndex', this.options.threshold - 10);
-            }
-            
-            switch (popup.loadMethod.toLowerCase()) 
+
+            this.moveAllBehindThreshold();
+
+            var position = { 'x': (this.windowDimensions.width - popup.width) / 2, 'y': (this.windowDimensions.height - popup.height) / 2 };
+            var overlayCss =
             {
-                case 'html':
-                    this.openHtml(popup);
+                "width": this.windowDimensions.width,
+                "height": this.windowDimensions.height
+            }
+
+            var left, top = 0;
+            switch (popup.positionType) {
+                case "centered":
+                    left = position.x < 0 ? $(document).scrollLeft() : position.x + $(document).scrollLeft();
+                    top = position.y < 0 ? $(document).scrollTop() : position.y + $(document).scrollTop();
                     break;
-                case 'ajax':
-                    break;
-                case 'iframe':
+                case "offset":
+                    left = position.x < 0 ? $(document).scrollLeft() : position.x + $(document).scrollLeft();
+                    top = $(document).scrollTop() + popup.offset;
                     break;
             }
+            var css =
+            {
+                'position': 'absolute',
+                'left': left,
+                'top': top,
+                'display': 'none',
+                'width': popup.width,
+                'height': popup.height,
+                'zIndex': this.options.threshold + 10
+            }
+
+            $('body').append('<div id="' + popup.id + '" class="' + popup.loadingClass + '" style="display: none; position: absolute"></div>');
+            var $container = $('#' + popup.id);
+            this.overlay.css(overlayCss).stop().fadeTo("slow", this.options.opacity, function () {
+                switch (popup.loadMethod.toLowerCase()) {
+                    case 'html':
+                        $container.html(popup.html);
+                        if (popup.height == null) {
+                            css.height = $container.height();
+                            var y = (this.windowDimensions.height - css.height) / 2;
+                            if (popup.positionType == 'centered') {
+                                css.top = y < 0 ? $(document).scrollTop() : y + $(document).scrollTop();
+                            }
+                        }
+                        if (typeof (this.options.beforeOpen) === "function") {
+                            this.options.beforeOpen(popup);
+                        }
+                        $container.css(css).addClass(popup.className).stop().fadeIn('fast', function () {
+                            $container.removeClass(popup.loadingClass);
+                        });
+                        $container.find('.' + popup.closeClassName).click(function (event: JQueryEventObject) {
+                            this.close(popup);
+                            event.preventDefault();
+                        });
+                        break;
+                    case 'ajax':
+                        //help.openAjax(popup, css);
+                        break;
+                    case 'iframe':
+                        //help.openIframe(popup, css);
+                        break;
+                }
+            });
             this.stack.push(popup);
             return popup;
         }
 
-        
-        private openHtml(popup) 
-        {
-            
+        moveAllBehindThreshold() {
+            var length = this.stack.length;
+            for (var i = 0; i <= length; i++) {
+                $(this.stack[i].id).css('zIndex', this.options.threshold - 10);
+            }
         }
 
-        private openAjax(popup) 
-        {
-            
-        }
-
-        private openIframe(popup) 
-        {
-            
-        }
     }
+
+
 }
