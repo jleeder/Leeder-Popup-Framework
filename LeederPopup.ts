@@ -144,25 +144,26 @@ module LeederPopup {
 
             $('body').append('<div id="' + popup.id + '" class="' + popup.loadingClass + '" style="display: none; position: absolute"></div>');
             var $container = $('#' + popup.id);
+            var _this = this;
             this.overlay.css(overlayCss).stop().fadeTo("slow", this.options.opacity, function () {
                 switch (popup.loadMethod.toLowerCase()) {
                     case 'html':
                         $container.html(popup.html);
                         if (popup.height == null) {
                             css.height = $container.height();
-                            var y = (this.windowDimensions.height - css.height) / 2;
+                            var y = (_this.windowDimensions.height - css.height) / 2;
                             if (popup.positionType == 'centered') {
                                 css.top = y < 0 ? $(document).scrollTop() : y + $(document).scrollTop();
                             }
                         }
-                        if (typeof (this.options.beforeOpen) === "function") {
-                            this.options.beforeOpen(popup);
+                        if (typeof (popup.beforeOpen) === "function") {
+                            popup.beforeOpen(popup);
                         }
                         $container.css(css).addClass(popup.className).stop().fadeIn('fast', function () {
                             $container.removeClass(popup.loadingClass);
                         });
                         $container.find('.' + popup.closeClassName).click(function (event: JQueryEventObject) {
-                            this.close(popup);
+                            //_this.close(popup);
                             event.preventDefault();
                         });
                         break;
@@ -180,7 +181,7 @@ module LeederPopup {
 
         moveAllBehindThreshold() {
             var length = this.stack.length;
-            for (var i = 0; i <= length; i++) {
+            for (var i = 0; i < length; i++) {
                 $(this.stack[i].id).css('zIndex', this.options.threshold - 10);
             }
         }
